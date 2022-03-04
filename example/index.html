@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang=en>
+
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+
+<title>Form Table</title>
+
+<link href=style.css rel=stylesheet>
+<script data-tuck src=main.js type=module></script>
+
+<form id=registration>
+	<h1>Registration</h1>
+
+	<section>
+		<label>
+			First Name: <input name=first required>
+		</label>
+		<label>
+			Last Name: <input name=last required>
+		</label>
+		<label>
+			Age: <input name=age type=number min=18 required>
+		</label>
+		<label>
+			Start Date:
+			<input name=start type=date min=2022-01-01 required>
+		</label>
+	</section>
+
+	<button type=submit>Submit</button>
+</form>

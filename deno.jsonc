@@ -1,0 +1,17 @@
+{
+	"fmt": {
+		"files": {
+			"exclude": ["target/", "out/bindings.js"]
+		},
+		"options": {
+			"useTabs": true,
+			"lineWidth": 100,
+			"indentWidth": 4
+		}
+	},
+	"lint": {
+		"files": {
+			"exclude": ["target/", "out/bindings.js"]
+		}
+	}
+}
