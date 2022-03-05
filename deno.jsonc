@@ -1,7 +1,7 @@
 {
 	"fmt": {
 		"files": {
-			"exclude": ["target/", "out/bindings.js"]
+			"exclude": ["target/", "pkg/bindings.js", "pkg/wasm.js"]
 		},
 		"options": {
 			"useTabs": true,
@@ -11,7 +11,7 @@
 	},
 	"lint": {
 		"files": {
-			"exclude": ["target/", "out/bindings.js"]
+			"exclude": ["target/", "pkg/bindings.js", "pkg/wasm.js"]
 		}
 	}
 }

@@ -2,8 +2,9 @@
 /// <reference types="./types.d.ts" />
 
 import init, { HTMLRewriterSync } from "./bindings.js";
+import wasm from "./wasm.js";
 
-await init(new URL("lib.wasm", import.meta.url));
+await init(wasm);
 
 export class HTMLRewriterStream extends TransformStream {
 	constructor(settings) {

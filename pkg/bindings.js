@@ -1,6 +1,4 @@
-// Copyright 2022-2022 Josh <dev@jotch.dev>. MIT license.
-// Portions of the WASM binary Copyright 2019-2022 Cloudflare. BSD-3-Clause license.
-
+// Copyright 2022 Josh <dev@jotch.dev>. MIT license.
 let wasm;
 
 const heap = new Array(32).fill(undefined);

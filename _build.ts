@@ -1,6 +1,7 @@
 #! /usr/bin/env -S deno run --allow-run --allow-read --allow-write --allow-env
 
-// import { readLines } from "https://deno.land/std@0.128.0/io/mod.ts";
+import { readAll, readerFromStreamReader } from "https://deno.land/std@0.128.0/streams/mod.ts";
+import { encode } from "https://deno.land/std@0.128.0/encoding/base64.ts";
 
 const root = new URL(".", import.meta.url).pathname;
 
@@ -45,30 +46,70 @@ if (!bindgenStatus.success) {
 	Deno.exit(1);
 }
 
-const wasmOptStatus = await Deno.run({
-	cmd: [
-		"wasm-opt",
-		"./target/wasm32-bindgen-web/lib_bg.wasm",
-
-		"--enable-reference-types",
-
-		"-O3",
-
-		"--output=./out/lib.wasm",
-	],
-}).status();
-if (!wasmOptStatus.success) {
-	console.error("Failed to optimize WASM binary.");
-	Deno.exit(1);
-}
-
 const year = new Date().getFullYear();
 const copyrightLine = `
-// Copyright 2022-${year} Josh <dev@jotch.dev>. MIT license.
-// Portions of the WASM binary Copyright 2019-${year} Cloudflare. BSD-3-Clause license.
-`.trimStart();
+	// Copyright 2022 Josh <dev@jotch.dev>. MIT license.
+`.trim();
 
-await Deno.writeTextFile("./out/bindings.js", copyrightLine);
-const bindingsFile = await Deno.open("./out/bindings.js", { append: true });
-const generatedFile = await Deno.open("./target/wasm32-bindgen-web/lib.js");
-await generatedFile.readable.pipeTo(bindingsFile.writable);
+await Promise.all([
+	// optimize, compress, and encode WASM file
+	(async () => {
+		const wasmOpt = Deno.run({
+			cmd: [
+				"wasm-opt",
+				"./target/wasm32-bindgen-web/lib_bg.wasm",
+
+				"--enable-reference-types",
+
+				"-O3",
+
+				"--output=-",
+			],
+			stdout: "piped",
+		});
+
+		const compressedWasmStream = wasmOpt.stdout.readable.pipeThrough(
+			new CompressionStream("gzip"),
+		);
+		const compressedWasm = await readAll(
+			readerFromStreamReader(compressedWasmStream.getReader()),
+		);
+		const encodedWasm = encode(compressedWasm);
+
+		const wasmOptStatus = await wasmOpt.status();
+		if (!wasmOptStatus.success) {
+			console.error("Failed to optimize WASM binary.");
+			Deno.exit(1);
+		}
+
+		await Deno.writeTextFile(
+			"./pkg/wasm.js",
+			`
+			${copyrightLine}
+			// Portions of the WASM binary Copyright 2019-${year} Cloudflare. BSD-3-Clause license.
+
+			export default new Response(
+				new ReadableStream({
+					start(controller) {
+						controller.enqueue(Uint8Array.from(atob("${encodedWasm}"), (A) => A.charCodeAt(0)));
+						controller.close();
+					},
+				}).pipeThrough(new DecompressionStream("gzip")),
+				{
+					headers: {
+						"content-type": "application/wasm",
+					},
+				},
+			);
+			`.trim().replaceAll(/^\t{3}/gm, ""),
+		);
+	})(),
+
+	// prepend license header to bindings
+	(async () => {
+		await Deno.writeTextFile("./pkg/bindings.js", copyrightLine);
+		const bindingsFile = await Deno.open("./pkg/bindings.js", { append: true });
+		const generatedFile = await Deno.open("./target/wasm32-bindgen-web/lib.js");
+		await generatedFile.readable.pipeTo(bindingsFile.writable);
+	})(),
+]);

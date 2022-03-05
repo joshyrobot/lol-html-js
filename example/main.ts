@@ -1,6 +1,6 @@
 // Copyright 2022 Josh <dev@jotch.dev>. MIT license.
 
-import { HTMLRewriterStream } from "../out/mod.js";
+import { HTMLRewriterStream } from "../pkg/mod.js";
 
 const stream = new HTMLRewriterStream({
 	elementHandlers: [

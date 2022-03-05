@@ -88,4 +88,3 @@ impl From<JsElementHandler> for ElementHandler<'_, '_> {
 		(selector, handler)
 	}
 }
-
