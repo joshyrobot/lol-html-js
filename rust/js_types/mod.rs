@@ -12,6 +12,14 @@ use lol_html::{
 };
 use wasm_bindgen::prelude::*;
 
+use crate::ref_wrapper::Wrappable;
+
+mod comment;
+mod element;
+use element::{JsElement, JsUnderlyingElement};
+
+use self::comment::{JsComment, JsUnderlyingComment};
+
 #[wasm_bindgen]
 extern "C" {
 	pub type JsRewriterSettings;
@@ -74,17 +82,35 @@ extern "C" {
 type ElementHandler<'s, 'h> = (Cow<'s, Selector>, ElementContentHandlers<'h>);
 
 impl From<JsElementHandler> for ElementHandler<'_, '_> {
-	fn from(value: JsElementHandler) -> Self {
-		let selector = Cow::Owned(value.selector().parse().expect("invalid selector"));
+	fn from(js_handler: JsElementHandler) -> Self {
+		let selector = Cow::Owned(js_handler.selector().parse().expect("invalid selector"));
 
-		let mut handler = ElementContentHandlers::default();
-		if let Some(callback) = value.element() {
-			handler = handler.element(move |_element| {
-				callback.call0(&JsValue::NULL).unwrap();
+		let mut callbacks = ElementContentHandlers::default();
+
+		if let Some(cb) = js_handler.element() {
+			callbacks = callbacks.element(move |el| {
+				el.get_wrapped(|el| {
+					let underlying = JsUnderlyingElement(el);
+					let js_element = JsElement::new(underlying);
+					cb.call1(&JsValue::NULL, &js_element).unwrap();
+				});
+
 				Ok(())
 			});
 		}
 
-		(selector, handler)
+		if let Some(cb) = js_handler.comments() {
+			callbacks = callbacks.comments(move |cm| {
+				cm.get_wrapped(|cm| {
+					let underlying = JsUnderlyingComment(cm);
+					let js_element = JsComment::new(underlying);
+					cb.call1(&JsValue::NULL, &js_element).unwrap();
+				});
+
+				Ok(())
+			});
+		}
+
+		(selector, callbacks)
 	}
 }

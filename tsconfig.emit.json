@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"rootDirs": [
+			"pkg",
+			"ts"
+		],
+		"noResolve": true,
+
+		"allowJs": true,
+		"checkJs": false,
+
+		"outDir": "./pkg",
+
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"noImplicitAny": false
+	},
+	"include": ["ts/**/*"]
+}

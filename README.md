@@ -1,6 +1,6 @@
 # Building
 
-You need `deno`, `cargo`, `wasm-bindgen`, and `wasm-opt` to build this.
+You need `deno`, `cargo`, `npx` (`npm`), `wasm-bindgen`, and `wasm-opt` to build this.
 
 `deno run --allow-all ./_build.ts` does it all!
 

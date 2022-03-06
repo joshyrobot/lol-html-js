@@ -9,6 +9,8 @@ use wasm_bindgen::prelude::*;
 mod js_types;
 use js_types::JsRewriterSettings;
 
+mod ref_wrapper;
+
 #[derive(Clone)]
 pub struct Uint8ArraySink(Rc<RefCell<Vec<Uint8Array>>>);
 impl Uint8ArraySink {

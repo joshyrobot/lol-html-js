@@ -49,67 +49,92 @@ if (!bindgenStatus.success) {
 const year = new Date().getFullYear();
 const copyrightLine = `
 	// Copyright 2022 Josh <dev@jotch.dev>. MIT license.
-`.trim();
+`.trimStart();
 
-await Promise.all([
-	// optimize, compress, and encode WASM file
-	(async () => {
-		const wasmOpt = Deno.run({
-			cmd: [
-				"wasm-opt",
-				"./target/wasm32-bindgen-web/lib_bg.wasm",
+// optimize, compress, and encode WASM file
+const wasmOpt = Deno.run({
+	cmd: [
+		"wasm-opt",
+		"./target/wasm32-bindgen-web/lib_bg.wasm",
 
-				"--enable-reference-types",
+		"--enable-reference-types",
 
-				"-O3",
+		"-O3",
 
-				"--output=-",
-			],
-			stdout: "piped",
-		});
+		"--output=-",
+	],
+	stdout: "piped",
+});
 
-		const compressedWasmStream = wasmOpt.stdout.readable.pipeThrough(
-			new CompressionStream("gzip"),
-		);
-		const compressedWasm = await readAll(
-			readerFromStreamReader(compressedWasmStream.getReader()),
-		);
-		const encodedWasm = encode(compressedWasm);
+const compressedWasmStream = wasmOpt.stdout.readable.pipeThrough(
+	new CompressionStream("gzip"),
+);
+const compressedWasm = await readAll(
+	readerFromStreamReader(compressedWasmStream.getReader()),
+);
+const encodedWasm = encode(compressedWasm);
 
-		const wasmOptStatus = await wasmOpt.status();
-		if (!wasmOptStatus.success) {
-			console.error("Failed to optimize WASM binary.");
-			Deno.exit(1);
-		}
+const wasmOptStatus = await wasmOpt.status();
+if (!wasmOptStatus.success) {
+	console.error("Failed to optimize WASM binary.");
+	Deno.exit(1);
+}
 
-		await Deno.writeTextFile(
-			"./pkg/wasm.js",
-			`
-			${copyrightLine}
-			// Portions of the WASM binary Copyright 2019-${year} Cloudflare. BSD-3-Clause license.
+await Deno.writeTextFile(
+	"./pkg/wasm.js",
+	`
+	${copyrightLine.trimEnd()}
+	// Portions of the WASM binary Copyright 2019-${year} Cloudflare. BSD-3-Clause license.
 
-			export default new Response(
-				new ReadableStream({
-					start(controller) {
-						controller.enqueue(Uint8Array.from(atob("${encodedWasm}"), (A) => A.charCodeAt(0)));
-						controller.close();
-					},
-				}).pipeThrough(new DecompressionStream("gzip")),
-				{
-					headers: {
-						"content-type": "application/wasm",
-					},
-				},
-			);
-			`.trim().replaceAll(/^\t{3}/gm, ""),
-		);
-	})(),
+	export default new Response(
+		new ReadableStream({
+			start(controller) {
+				controller.enqueue(Uint8Array.from(atob("${encodedWasm}"), (A) => A.charCodeAt(0)));
+				controller.close();
+			},
+		}).pipeThrough(new DecompressionStream("gzip")),
+		{
+			headers: {
+				"content-type": "application/wasm",
+			},
+		},
+	);
+	`.trim().replaceAll(/^\t/gm, ""),
+);
 
-	// prepend license header to bindings
-	(async () => {
-		await Deno.writeTextFile("./pkg/bindings.js", copyrightLine);
-		const bindingsFile = await Deno.open("./pkg/bindings.js", { append: true });
-		const generatedFile = await Deno.open("./target/wasm32-bindgen-web/lib.js");
-		await generatedFile.readable.pipeTo(bindingsFile.writable);
-	})(),
-]);
+// prepend license header to bindings
+await Deno.writeTextFile("./pkg/bindings.js", copyrightLine);
+const bindingsFile = await Deno.open("./pkg/bindings.js", { append: true });
+const generatedFile = await Deno.open("./target/wasm32-bindgen-web/lib.js");
+await generatedFile.readable.pipeTo(bindingsFile.writable);
+
+const TYPESCRIPT_VERSION = "4.6.2";
+const tscEmitStatus = await Deno.run({
+	cmd: [
+		"npx",
+		`--package=typescript@${TYPESCRIPT_VERSION}`,
+		"tsc",
+
+		"-p",
+		"tsconfig.emit.json",
+	],
+}).status();
+if (!tscEmitStatus.success) {
+	console.error("Failed to compile TypeScript");
+	Deno.exit(1);
+}
+
+const tscDeclarationsStatus = await Deno.run({
+	cmd: [
+		"npx",
+		`--package=typescript@${TYPESCRIPT_VERSION}`,
+		"tsc",
+
+		"-p",
+		"tsconfig.declarations.json",
+	],
+}).status();
+if (!tscDeclarationsStatus.success) {
+	console.error("Failed to emit TypeScript declarations");
+	Deno.exit(1);
+}
